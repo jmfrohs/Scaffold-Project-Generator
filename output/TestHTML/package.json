@@ -1,0 +1,22 @@
+{
+  "name": "testhtml",
+  "version": "0.1.0",
+  "description": "",
+  "author": "jmfrohs",
+  "license": "MIT",
+  "scripts": {
+    "start": "npx http-server src/ -o",
+    "format": "prettier --write \"src/**\"",
+    "format:lic": "node scripts/format-with-licenses.js",
+    "pre-commit": "npm run format && npm run format:lic",
+    "menu": "node scripts/menu.js",
+    "server:start": "cd server && node index.js",
+    "server:dev": "cd server && node --watch index.js",
+    "server:install": "cd server && npm install",
+    "server:stop": "taskkill /F /IM node.exe 2>nul || echo No server running"
+  },
+  "devDependencies": {
+    "http-server": "^14.0.0",
+    "prettier": "^3.0.0"
+  }
+}

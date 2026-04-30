@@ -1,0 +1,18 @@
+{
+  "name": "testhtml-server",
+  "version": "1.0.0",
+  "description": "Backend server for testhtml",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "stop": "taskkill /F /IM node.exe 2>nul || echo No server running",
+    "restart": "npm run stop && npm start"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.3"
+  }
+}

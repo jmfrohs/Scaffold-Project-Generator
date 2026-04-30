@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+htmlcov/
+report.xml
+.vscode/
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+venv/
+.env
