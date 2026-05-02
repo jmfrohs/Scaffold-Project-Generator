@@ -1,7 +1,7 @@
 {
   "name": "testjs",
   "version": "0.1.0",
-  "description": "",
+  "description": "TestJs",
   "author": "jmfrohs",
   "license": "MIT",
   "scripts": {
@@ -11,7 +11,11 @@
     "format": "prettier --write \"src/**/*.js\"",
     "format:lic": "node scripts/format-with-licenses.js",
     "pre-commit": "npm run format && npm run format:lic",
-    "menu": "node scripts/menu.js"
+    "menu": "node scripts/menu.js",
+    "server:start": "cd server && node index.js",
+    "server:dev": "cd server && node --watch index.js",
+    "server:install": "cd server && npm install",
+    "server:stop": "taskkill /F /IM node.exe 2>nul || echo No server running"
   },
   "devDependencies": {
     "jest": "^29.0.0",

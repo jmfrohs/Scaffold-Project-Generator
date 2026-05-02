@@ -24,8 +24,10 @@ import os
 import json
 import subprocess
 from pathlib import Path
+from datetime import datetime
 
 CONFIG_FILE = Path.home() / ".scaffoldrc"
+HISTORY_FILE = Path.home() / ".scaffold_history"
 DEFAULT_SOURCE_SCRIPTS = None
 DEFAULT_OUTPUT_DIR = "output"
 
@@ -94,6 +96,8 @@ def load_config():
         "docker": False,
         "ci": "github",
         "tasks_md": True,
+        "changelog_md": True,
+        "contributing_md": True,
         "prettier": False,
         "indent_size": 2,
     }
@@ -105,3 +109,62 @@ def load_config():
         except Exception as e:
             print(f"Warning: Could not load config: {e}")
     return defaults
+
+def load_history():
+    """Load project history from ~/.scaffold_history"""
+    if HISTORY_FILE.exists():
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("projects", [])
+        except Exception as e:
+            print(f"Warning: Could not load history: {e}")
+    return []
+
+def save_to_history(project_config):
+    """Save a project configuration to history."""
+    try:
+        history_data = {"projects": []}
+        if HISTORY_FILE.exists():
+            try:
+                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                    history_data = json.load(f)
+            except Exception:
+                pass
+
+        entry = {
+            "id": str(int(datetime.now().timestamp() * 1000)),
+            "name": project_config.get("name"),
+            "lang": project_config.get("lang"),
+            "template": project_config.get("template"),
+            "author": project_config.get("author"),
+            "version": project_config.get("version"),
+            "license": project_config.get("license"),
+            "description": project_config.get("description"),
+            "lang_version": project_config.get("lang_version"),
+            "package_manager": project_config.get("package_manager"),
+            "test_framework": project_config.get("test_framework"),
+            "linter": project_config.get("linter"),
+            "docker": project_config.get("docker"),
+            "ci": project_config.get("ci"),
+            "server": project_config.get("server"),
+            "server_port": project_config.get("server_port"),
+            "prettier": project_config.get("prettier"),
+            "indent_size": project_config.get("indent_size"),
+            "timestamp": datetime.now().isoformat(),
+            "path": project_config.get("path"),
+        }
+
+        history_data["projects"].insert(0, entry)
+
+        history_data["projects"] = history_data["projects"][:50]
+
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history_data, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save to history: {e}")
+
+def get_recent_projects(limit=10):
+    """Get the most recent projects from history."""
+    history = load_history()
+    return history[:limit]

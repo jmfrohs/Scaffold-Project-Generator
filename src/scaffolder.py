@@ -33,7 +33,7 @@ try:
 except ImportError:
     HAS_QUESTIONARY = False
 
-from config import DEFAULT_SOURCE_SCRIPTS
+from config import DEFAULT_SOURCE_SCRIPTS, save_to_history
 from generators.common import (
     generate_dockerfile,
     generate_dockerignore,
@@ -59,6 +59,8 @@ from generators.scripts import (
 from generators.server import scaffold_server
 from utils import (
     create_directory,
+    create_changelog_md,
+    create_contributing_md,
     create_tasks_md,
     get_install_command,
     run_command,
@@ -140,6 +142,98 @@ def browse_directory(start=None):
 
     return str(current)
 
+def browse_history(projects):
+    """Interactive arrow-key project picker from history using questionary."""
+    if not HAS_QUESTIONARY:
+        print("⚠️  questionary not installed. Run: pip install questionary")
+        return None
+
+    if not projects:
+        print("📜 No recent projects found.")
+        return None
+
+    choices = []
+    for idx, project in enumerate(projects, 1):
+        timestamp = project.get("timestamp", "")
+        if timestamp:
+            timestamp = timestamp.split("T")[0] + " " + timestamp.split("T")[1][:5]
+        else:
+            timestamp = "unknown"
+
+        title = f"#{idx} {project['name']} ({project['lang']}/{project['template']}) - {timestamp}"
+        choices.append(questionary.Choice(title=title, value=project["id"]))
+
+    choices.append(questionary.Separator("─" * 50))
+    choices.append(questionary.Choice(title="❌ Cancel", value="__cancel__"))
+
+    selected_id = questionary.select(
+        "📜 Recent Projects",
+        choices=choices,
+        use_arrow_keys=True,
+        use_shortcuts=False,
+    ).ask()
+
+    if selected_id is None or selected_id == "__cancel__":
+        return None
+
+    for project in projects:
+        if project["id"] == selected_id:
+            return project
+
+    return None
+
+def edit_project_config(project_config):
+    """Interactively edit project configuration before creating."""
+    if not HAS_QUESTIONARY:
+        print("⚠️  questionary not installed.")
+        return project_config
+
+    print("\n📝 Edit Project Configuration (press Enter to keep current value)\n")
+
+    new_name = questionary.text(
+        "Project name:",
+        default=project_config.get("name", ""),
+    ).ask()
+    if new_name:
+        project_config["name"] = new_name
+
+    new_lang = questionary.select(
+        "Language:",
+        choices=[
+            project_config.get("lang", "javascript"),
+            "javascript",
+            "python",
+            "html",
+        ],
+        default=project_config.get("lang", "javascript"),
+    ).ask()
+    if new_lang:
+        project_config["lang"] = new_lang
+
+    new_template = questionary.select(
+        "Template:",
+        choices=[project_config.get("template", "basic"), "basic", "cli", "api"],
+        default=project_config.get("template", "basic"),
+    ).ask()
+    if new_template:
+        project_config["template"] = new_template
+
+    new_version = questionary.text(
+        "Version:",
+        default=project_config.get("version", "0.1.0"),
+    ).ask()
+    if new_version:
+        project_config["version"] = new_version
+
+    new_desc = questionary.text(
+        "Description:",
+        default=project_config.get("description", ""),
+    ).ask()
+    if new_desc is not None:
+        project_config["description"] = new_desc
+
+    return project_config
+
 def scaffold_project(args):
     project_name = args.name
     author = args.author
@@ -168,7 +262,10 @@ def scaffold_project(args):
         output_dir = browsed
     else:
         output_dir = (
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), args.output_dir)
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                args.output_dir,
+            )
             if not os.path.isabs(args.output_dir)
             else args.output_dir
         )
@@ -446,4 +543,32 @@ def scaffold_project(args):
     if args.tasks_md:
         create_tasks_md(base_dir)
 
+    if args.changelog_md:
+        create_changelog_md(base_dir)
+
+    if args.contributing_md:
+        create_contributing_md(base_dir)
+
     print(f"\nSuccessfully scaffolded {project_name} in {base_dir}")
+
+    project_config = {
+        "name": args.name,
+        "lang": lang,
+        "template": template,
+        "author": author,
+        "version": version,
+        "license": license_type,
+        "description": description,
+        "lang_version": lang_version,
+        "package_manager": package_manager,
+        "test_framework": test_framework,
+        "linter": linter,
+        "docker": docker,
+        "ci": ci,
+        "server": server,
+        "server_port": server_port,
+        "prettier": prettier,
+        "indent_size": indent_size,
+        "path": base_dir,
+    }
+    save_to_history(project_config)

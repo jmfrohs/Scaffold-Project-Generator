@@ -50,6 +50,8 @@ def _make_args(tmp_path, **overrides):
         git=False,
         install=False,
         tasks_md=False,
+        changelog_md=False,
+        contributing_md=False,
         output_dir=str(tmp_path),
         entry=None,
         prettier=False,
@@ -88,6 +90,14 @@ class TestScaffoldProject:
     def test_python_tasks_md_created(self, tmp_path):
         scaffold_project(_make_args(tmp_path, tasks_md=True))
         assert (tmp_path / "TestProj" / "tasks.md").exists()
+
+    def test_python_changelog_md_created(self, tmp_path):
+        scaffold_project(_make_args(tmp_path, changelog_md=True))
+        assert (tmp_path / "TestProj" / "changelog.md").exists()
+
+    def test_python_contributing_md_created(self, tmp_path):
+        scaffold_project(_make_args(tmp_path, contributing_md=True))
+        assert (tmp_path / "TestProj" / "contributing.md").exists()
 
     def test_javascript_project_structure(self, tmp_path):
         scaffold_project(_make_args(tmp_path, lang="javascript", test_framework="jest"))

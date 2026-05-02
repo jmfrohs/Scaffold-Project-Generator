@@ -15,6 +15,9 @@ const COMMANDS = [
   { key: "6", label: "format:lic    → node scripts/format-with-licenses.js", cmd: "node scripts/format-with-licenses.js" },
 
   { key: "8", label: "pre-commit    → format + format:lic", cmd: "npm run format && node scripts/format-with-licenses.js" },
+  { key: "s", label: "server:start  → cd server && node index.js", cmd: "cd server && node index.js" },
+  { key: "d", label: "server:dev    → cd server && node --watch index.js", cmd: "cd server && node --watch index.js" },
+  { key: "i", label: "server:install → cd server && npm install", cmd: "cd server && npm install" },
   { key: "0", label: "exit", cmd: null },
 ];
 

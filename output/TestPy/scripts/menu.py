@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Project menu for TestPy
+Project menu for TESTPY
 Usage: python scripts/menu.py
 """
 import subprocess
@@ -30,7 +30,7 @@ def run(cmd):
 
 def show_menu():
     print("\n========================================")
-    print(f"  TestPy — Project Menu")
+    print(f"  TESTPY — Project Menu")
     print("========================================")
     for key, label, _ in COMMANDS:
         if key != "0":

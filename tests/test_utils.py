@@ -30,6 +30,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from utils import (
     create_directory,
+    create_changelog_md,
+    create_contributing_md,
     create_tasks_md,
     get_install_command,
     get_test_command,
@@ -108,6 +110,24 @@ class TestCreateTasksMd:
         tasks_file = tmp_path / "tasks.md"
         assert tasks_file.exists()
         assert "# Project Tasks" in tasks_file.read_text(encoding="utf-8")
+
+class TestCreateChangelogMd:
+    def test_creates_changelog_md(self, tmp_path):
+        create_changelog_md(str(tmp_path))
+        changelog_file = tmp_path / "changelog.md"
+        assert changelog_file.exists()
+        content = changelog_file.read_text(encoding="utf-8")
+        assert "# Changelog" in content
+        assert "All notable changes" in content
+
+class TestCreateContributingMd:
+    def test_creates_contributing_md(self, tmp_path):
+        create_contributing_md(str(tmp_path))
+        contributing_file = tmp_path / "contributing.md"
+        assert contributing_file.exists()
+        content = contributing_file.read_text(encoding="utf-8")
+        assert "# Contributing" in content
+        assert "Thank you for considering contributing" in content
 
 class TestRunCommand:
     def test_successful_command_returns_true(self, tmp_path):

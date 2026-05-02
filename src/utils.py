@@ -23,20 +23,30 @@
 import os
 import subprocess
 
-def create_directory(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-        print(f"Created directory: {path}")
+def create_directory(directory_path):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Created directory: {directory_path}")
 
-def write_file(path, content):
-    with open(path, "w", encoding="utf-8") as f:
+def write_file(file_path, content):
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"Created file: {path}")
+    print(f"Created file: {file_path}")
 
 def create_tasks_md(output_dir):
-    content = "# Project Tasks\n\n"
+    tasks_md_content = "# Project Tasks\n\n"
     tasks_md_path = os.path.join(output_dir, "tasks.md")
-    write_file(tasks_md_path, content)
+    write_file(tasks_md_path, content=tasks_md_content)
+
+def create_changelog_md(output_dir):
+    changelog_md_content = "# Changelog\n\nAll notable changes to this project will be documented in this file.\n"
+    changelog_md_path = os.path.join(output_dir, "changelog.md")
+    write_file(changelog_md_path, content=changelog_md_content)
+
+def create_contributing_md(output_dir):
+    contributing_md_content = "# Contributing\n\nThank you for considering contributing to this project! Please read the following guidelines before submitting a pull request.\n"
+    contributing_md_path = os.path.join(output_dir, "contributing.md")
+    write_file(contributing_md_path, content=contributing_md_content)
 
 def run_command(command, cwd):
     """Run a shell command and return its success."""

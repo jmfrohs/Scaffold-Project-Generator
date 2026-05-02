@@ -23,8 +23,8 @@
 import argparse
 import sys
 
-from config import DEFAULT_OUTPUT_DIR, load_config, get_version
-from scaffolder import scaffold_project
+from config import DEFAULT_OUTPUT_DIR, load_config, get_version, get_recent_projects
+from scaffolder import scaffold_project, browse_history, edit_project_config
 
 if __name__ == "__main__":
     defaults = load_config()
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         nargs="?",
         const="__interactive__",
         default=defaults.get("version", "0.1.0"),
-        help="Project version. Use --version for interactive prompt, or --version 1.2.3 to set directly.",
+        help="Project version. Use --version or --version 1.2.3 to set directly.",
     )
     parser.add_argument(
         "--license",
@@ -144,6 +144,20 @@ if __name__ == "__main__":
         help="Creates a tasks.md file (default: True).",
     )
     parser.add_argument(
+        "--changelog-md",
+        dest="changelog_md",
+        action="store_true",
+        default=defaults.get("changelog_md", True),
+        help="Creates a changelog.md file (default: True).",
+    )
+    parser.add_argument(
+        "--contributing-md",
+        dest="contributing_md",
+        action="store_true",
+        default=defaults.get("contributing_md", True),
+        help="Creates a contributing.md file (default: True).",
+    )
+    parser.add_argument(
         "--prettier",
         action="store_true",
         default=defaults.get("prettier", False),
@@ -156,6 +170,26 @@ if __name__ == "__main__":
         default=defaults.get("indent_size", 2),
         help="Indentation width in spaces for .prettierrc (default: 2, requires --prettier)",
     )
+    parser.add_argument(
+        "--recent",
+        action="store_true",
+        default=False,
+        help="Browse & pick from recently created projects",
+    )
+    parser.add_argument(
+        "--history-limit",
+        dest="history_limit",
+        type=int,
+        default=10,
+        help="Number of recent projects to display (default: 10)",
+    )
+    parser.add_argument(
+        "--edit-config",
+        dest="edit_config",
+        action="store_true",
+        default=False,
+        help="Edit selected project configuration before creating",
+    )
     parser.set_defaults(git=defaults["git"], install=defaults["install"])
 
     if len(sys.argv) == 1:
@@ -163,6 +197,48 @@ if __name__ == "__main__":
         sys.exit(0)
 
     args = parser.parse_args()
+
+    if args.recent:
+        recent_projects = get_recent_projects(args.history_limit)
+        selected = browse_history(recent_projects)
+        if selected is None:
+            print("❌ Cancelled.")
+            sys.exit(1)
+
+        args.name = selected["name"]
+        args.lang = selected["lang"]
+        args.template = selected["template"]
+        args.author = selected["author"]
+        args.version = selected["version"]
+        args.license = selected["license"]
+        args.description = selected["description"]
+        args.lang_version = selected.get("lang_version")
+        args.package_manager = selected.get("package_manager", "npm")
+        args.test_framework = selected.get("test_framework")
+        args.linter = selected.get("linter")
+        args.docker = selected.get("docker", False)
+        args.ci = selected.get("ci", "github")
+        args.server = selected.get("server", False)
+        args.server_port = selected.get("server_port", 3001)
+        args.prettier = selected.get("prettier", False)
+        args.indent_size = selected.get("indent_size", 2)
+
+        if args.edit_config:
+            print()
+            config_dict = {
+                "name": args.name,
+                "lang": args.lang,
+                "template": args.template,
+                "version": args.version,
+                "description": args.description,
+            }
+            edited = edit_project_config(config_dict)
+            args.name = edited["name"]
+            args.lang = edited["lang"]
+            args.template = edited["template"]
+            args.version = edited["version"]
+            args.description = edited["description"]
+
     if not args.name:
         parser.print_help()
         sys.exit(0)
