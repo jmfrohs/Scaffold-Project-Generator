@@ -3,5 +3,3 @@ coverage/
 .vscode/
 .DS_Store
 *.log
-server/.env
-server/node_modules/

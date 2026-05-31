@@ -188,6 +188,24 @@ jobs:
           pip install -r requirements.txt
       - run: {test_cmd}
 """
+    elif lang == "html":
+        node_version = lang_version or "18"
+        install_cmd = get_install_command(package_manager)
+        return f"""name: CI
+
+on: [push, pull_request]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v3
+                with:
+                    node-version: '{node_version}'
+            - run: {install_cmd}
+            - run: {package_manager} run format
+"""
 
 def generate_gitlab_ci(lang, lang_version, test_framework, package_manager):
     if lang == "javascript":
@@ -219,6 +237,20 @@ test:
     - pip install -r requirements.txt
     - {test_cmd}
 """
+    elif lang == "html":
+        node_version = lang_version or "18"
+        install_cmd = get_install_command(package_manager)
+        return f"""image: node:{node_version}
+
+stages:
+    - test
+
+test:
+    stage: test
+    script:
+        - {install_cmd}
+        - {package_manager} run format
+"""
 
 def generate_dockerfile(lang, lang_version, entry):
     if lang == "javascript":
@@ -239,11 +271,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 CMD ["python", "src/{entry}"]
 """
+    elif lang == "html":
+        node_ver = lang_version or "18"
+        return f"""FROM node:{node_ver}-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 8080
+CMD ["npx", "http-server", "src/", "-p", "8080"]
+"""
 
 def generate_dockerignore(lang):
     lines = [".git", ".gitignore", "*.log", ".env", "README.md"]
     if lang == "javascript":
         lines += ["node_modules/", "coverage/"]
+    elif lang == "html":
+        lines += ["node_modules/"]
     elif lang == "python":
         lines += ["__pycache__/", "*.pyc", "venv/"]
     return "\n".join(lines)

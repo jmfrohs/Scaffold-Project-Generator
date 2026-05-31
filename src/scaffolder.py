@@ -34,6 +34,13 @@ except ImportError:
     HAS_QUESTIONARY = False
 
 from config import DEFAULT_SOURCE_SCRIPTS, save_to_history
+from generators.java import (
+    generate_java_file,
+    generate_java_plugin_yml,
+    generate_java_pom,
+    generate_java_test_file,
+)
+from generators.mcserver import create_scaffold_test_server
 from generators.common import (
     generate_dockerfile,
     generate_dockerignore,
@@ -50,11 +57,13 @@ from generators.common import (
 from generators.html import generate_html_css, generate_html_index, generate_html_js
 from generators.scripts import (
     generate_format_licenses_js,
+    generate_format_licenses_java,
     generate_format_licenses_py,
     generate_makefile,
     generate_menu_html,
     generate_menu_js,
     generate_menu_py,
+    generate_start_test_server_py,
 )
 from generators.server import scaffold_server
 from utils import (
@@ -65,6 +74,8 @@ from utils import (
     get_install_command,
     run_command,
     write_file,
+    current_year,
+    country,
 )
 
 HIDDEN_DIRS = {
@@ -78,11 +89,14 @@ HIDDEN_DIRS = {
     ".cache",
 }
 
+def checkInstallationQuestionary():
+    if not HAS_QUESTIONARY:
+        print("Warning: questionary not installed. Run: pip install questionary")
+        return None
+
 def browse_directory(start=None):
     """Interactive arrow-key directory browser using questionary."""
-    if not HAS_QUESTIONARY:
-        print("⚠️  questionary not installed. Run: pip install questionary")
-        return None
+    checkInstallationQuestionary()
 
     current = Path(start or Path.home()).resolve()
 
@@ -99,7 +113,7 @@ def browse_directory(start=None):
                 key=str.lower,
             )
         except PermissionError:
-            print(f"⚠️  No permission to read {current}")
+            print(f"Warning: No permission to read {current}")
             current = current.parent
             continue
 
@@ -136,7 +150,7 @@ def browse_directory(start=None):
                 if p.is_dir():
                     current = p
                 else:
-                    print(f"⚠️  Not a valid directory: {typed}")
+                    print(f"Warning: Not a valid directory: {typed}")
         else:
             current = current / answer
 
@@ -144,9 +158,7 @@ def browse_directory(start=None):
 
 def browse_history(projects):
     """Interactive arrow-key project picker from history using questionary."""
-    if not HAS_QUESTIONARY:
-        print("⚠️  questionary not installed. Run: pip install questionary")
-        return None
+    checkInstallationQuestionary()
 
     if not projects:
         print("📜 No recent projects found.")
@@ -185,7 +197,7 @@ def browse_history(projects):
 def edit_project_config(project_config):
     """Interactively edit project configuration before creating."""
     if not HAS_QUESTIONARY:
-        print("⚠️  questionary not installed.")
+        print("Warning: questionary not installed.")
         return project_config
 
     print("\n📝 Edit Project Configuration (press Enter to keep current value)\n")
@@ -204,6 +216,7 @@ def edit_project_config(project_config):
             "javascript",
             "python",
             "html",
+            "java",
         ],
         default=project_config.get("lang", "javascript"),
     ).ask()
@@ -234,7 +247,7 @@ def edit_project_config(project_config):
 
     return project_config
 
-def scaffold_project(args):
+def scaffold_project(args, copy_htmlcov=False):
     project_name = args.name
     author = args.author
     lang = args.lang.lower()
@@ -252,6 +265,9 @@ def scaffold_project(args):
     ci = args.ci
     server = args.server
     server_port = args.server_port
+    minecraft_server = getattr(args, "minecraft_server", False)
+    minecraft_server_version = getattr(args, "minecraft_server_version", None)
+    minecraft_server_name = getattr(args, "minecraft_server_name", None)
     prettier = getattr(args, "prettier", False)
     indent_size = getattr(args, "indent_size", 2)
     if args.output_dir == "browse":
@@ -281,6 +297,20 @@ def scaffold_project(args):
     dirs = ["", "docs", "scripts"]
     if lang == "html":
         dirs += ["src", "src/js", "src/css"]
+    if lang == "java":
+        java_package_name = project_name.lower().replace("-", "").replace(" ", "")
+        package_country = country.lower()
+        package_author = author.lower().replace("-", "")
+        dirs += [
+            "src",
+            "src/main",
+            "src/main/java",
+            "src/main/resources",
+            "src/test",
+            "src/test/java",
+            f"src/main/java/{package_country}/{package_author}/{java_package_name}",
+            f"src/test/java/{package_country}/{package_author}/{java_package_name}",
+        ]
     else:
         if ci == "github":
             dirs.append(".github/workflows")
@@ -289,17 +319,18 @@ def scaffold_project(args):
         create_directory(os.path.join(base_dir, d))
 
     gitignore_content = generate_gitignore(lang)
+
     if server:
         gitignore_content += "\nserver/.env\nserver/node_modules/\n"
     write_file(os.path.join(base_dir, ".gitignore"), gitignore_content)
     write_file(
         os.path.join(base_dir, "LICENSE"), generate_license(license_type, author)
     )
-    project_name = project_name.replace("-", " ").upper()
+    readme_project_name = project_name.replace("-", " ").upper()
     write_file(
         os.path.join(base_dir, "README.md"),
         generate_readme(
-            project_name,
+            readme_project_name,
             lang,
             author,
             description,
@@ -311,7 +342,7 @@ def scaffold_project(args):
         ),
     )
 
-    if lang != "html":
+    if lang not in ("java", "html"):
         if ci == "github":
             write_file(
                 os.path.join(base_dir, ".github/workflows/ci.yml"),
@@ -457,6 +488,70 @@ def scaffold_project(args):
                 os.path.join(base_dir, ".prettierrc"),
                 generate_prettier_config(indent_size),
             )
+    elif lang == "java":
+        class_name = project_name.replace("-", "").replace(" ", "")
+        java_package_name = class_name.lower()
+        package_country = country.lower()
+        package_author = author.lower().replace("-", "")
+
+        write_file(
+            os.path.join(base_dir, "pom.xml"),
+            generate_java_pom(project_name, version, country, author),
+        )
+
+        write_file(
+            os.path.join(
+                base_dir,
+                f"src/main/java/{package_country}/{package_author}/{java_package_name}/{class_name}.java",
+            ),
+            generate_java_file(project_name, author, country, current_year),
+        )
+        write_file(
+            os.path.join(
+                base_dir,
+                f"src/test/java/{package_country}/{package_author}/{java_package_name}/{class_name}Test.java",
+            ),
+            generate_java_test_file(project_name, author, country, current_year),
+        )
+        write_file(
+            os.path.join(base_dir, "src/main/resources/plugin.yml"),
+            generate_java_plugin_yml(project_name, version, country, author),
+        )
+
+        if minecraft_server:
+            create_scaffold_test_server(
+                project_name,
+                version=minecraft_server_version,
+                server_name=minecraft_server_name,
+                servers_dir=os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    "servers",
+                ),
+            )
+
+        write_file(
+            os.path.join(base_dir, "scripts/format_with_licenses.py"),
+            generate_format_licenses_java(author, license_type),
+        )
+        if minecraft_server:
+            write_file(
+                os.path.join(base_dir, "scripts/start_test_server.py"),
+                generate_start_test_server_py(
+                    minecraft_server_name or f"TestServer_{project_name}"
+                ),
+            )
+        write_file(
+            os.path.join(base_dir, "Makefile"),
+            generate_makefile(
+                project_name,
+                None,
+                None,
+                None,
+                lang="java",
+                minecraft_server=minecraft_server,
+                minecraft_server_name=minecraft_server_name,
+            ),
+        )
 
     if docker:
         write_file(
@@ -549,6 +644,16 @@ def scaffold_project(args):
     if args.contributing_md:
         create_contributing_md(base_dir)
 
+    if copy_htmlcov:
+        source_htmlcov = Path(__file__).parent.parent / "htmlcov"
+        if source_htmlcov.exists():
+            dest_htmlcov = Path(base_dir) / "htmlcov"
+            print("Copying htmlcov folder...")
+            if dest_htmlcov.exists():
+                shutil.rmtree(dest_htmlcov)
+            shutil.copytree(source_htmlcov, dest_htmlcov)
+            print(f"✅ Added htmlcov folder to {project_name}")
+
     print(f"\nSuccessfully scaffolded {project_name} in {base_dir}")
 
     project_config = {
@@ -567,6 +672,9 @@ def scaffold_project(args):
         "ci": ci,
         "server": server,
         "server_port": server_port,
+        "minecraft-server": minecraft_server,
+        "minecraft-server-version": minecraft_server_version,
+        "minecraft-server-name": minecraft_server_name,
         "prettier": prettier,
         "indent_size": indent_size,
         "path": base_dir,

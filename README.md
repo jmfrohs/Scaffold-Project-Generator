@@ -2,22 +2,17 @@
 
 ## Installation
 
-1. Python 3.8 oder höher installieren.
-2. Repository klonen:
+1. Install Python 3.8 or higher.
+2. Clone Repository:
 	```bash
-	git clone <REPO-URL>
+	git clone <https://github.com/jmfrohs/Scaffold-Project-Generator.git>
 	cd Scaffold-Project-Generator
 	```
-3. Abhängigkeiten installieren:
+3.  Install independencies:
 	```bash
 	pip install -r requirements.txt
 	```
-	Alternativ mit Makefile:
+	or:
 	```bash
 	make install
-	```
-4. (Optional) Formatierung und Tests:
-	```bash
-	make format
-	make test
 	```

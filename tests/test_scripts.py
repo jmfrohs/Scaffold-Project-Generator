@@ -27,7 +27,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from generators.scripts import generate_format_licenses_py, generate_makefile
+from generators.scripts import (
+    generate_format_licenses_java,
+    generate_format_licenses_py,
+    generate_makefile,
+    generate_start_test_server_py,
+)
 
 class TestGenerateMakefile:
     def test_pytest_command(self):
@@ -50,3 +55,34 @@ class TestGenerateMakefile:
     def test_phony_targets(self):
         result = generate_makefile("MyProject", "main.py", "pytest", None)
         assert ".PHONY" in result
+
+class TestGenerateJavaScripts:
+    def test_java_makefile_includes_maven_targets(self):
+        result = generate_makefile("MyProject", None, None, None, lang="java")
+        assert "mvn test" in result
+        assert "jacoco:report" in result
+        assert "spotless-maven-plugin" in result
+
+    def test_java_makefile_includes_test_server_target(self):
+        result = generate_makefile(
+            "MyProject",
+            None,
+            None,
+            None,
+            lang="java",
+            minecraft_server=True,
+            minecraft_server_name="TestServer_MyProject",
+        )
+        assert "test-server-start" in result
+        assert "start_test_server.py" in result
+
+    def test_java_format_license_script_targets_java_sources(self):
+        result = generate_format_licenses_java("Alice", "MIT")
+        assert "src/main/java" in result
+        assert "src/test/java" in result
+        assert "MIT License" in result
+
+    def test_java_test_server_launcher_targets_server_dir(self):
+        result = generate_start_test_server_py("TestServer_MyProject")
+        assert "TestServer_MyProject" in result
+        assert "start.bat" in result or "start.sh" in result

@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from string import Template
+
 from utils import get_install_command, get_test_command
 
 def generate_format_licenses_js(author, license_type):
@@ -225,6 +227,152 @@ def main():
     for f in files:
         process_file(f)
     print(f"\\nDone — added: {{stats[\'added\']}}, updated: {{stats[\'updated\']}}, skipped: {{stats[\'skipped\']}}, errors: {{stats[\'errors\']}}")
+
+if __name__ == "__main__":
+    main()
+'''
+
+def generate_format_licenses_java(author, license_type):
+    if license_type == "MIT":
+        license_header = """/*
+ * MIT License
+ *
+ * Copyright (c) {year} $author
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the \"Software\"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */"""
+    else:
+        license_header = "/* Copyright (c) {year} $author */"
+
+    script = Template('''#!/usr/bin/env python3
+"""
+Add/update license headers in Java source files.
+Usage: python scripts/format_with_licenses.py
+
+Scans src/main/java and src/test/java.
+"""
+import re
+from datetime import datetime
+from pathlib import Path
+
+CURRENT_YEAR = str(datetime.now().year)
+AUTHOR = "$author"
+
+HEADER = """\\
+$license_header
+"""
+
+SKIP_DIRS = {".git", "target", "build", ".idea", "node_modules", ".vscode"}
+DIRS_TO_SCAN = ["src/main/java", "src/test/java"]
+
+def build_header():
+  return HEADER.replace("{year}", CURRENT_YEAR).replace("$author", AUTHOR)
+
+def has_license(content):
+  stripped = re.sub(r"^#!.*\\n", "", content).lstrip()
+  return stripped.startswith("/*") and "MIT License" in stripped
+
+def process_file(filepath):
+  content = filepath.read_text(encoding="utf-8")
+  if not has_license(content):
+    filepath.write_text(
+      build_header() + "\\n\\n" + content.lstrip(), encoding="utf-8"
+    )
+    print(f"  [added]   {filepath}")
+    return "added"
+
+  match = re.search(r"Copyright \\(c\\) (\\d{4}) ", content)
+  if match and match.group(1) != CURRENT_YEAR:
+    updated = re.sub(
+      r"Copyright \\(c\\) \\d{4} ",
+      f"Copyright (c) {CURRENT_YEAR} ",
+      content,
+      count=1,
+    )
+    filepath.write_text(updated, encoding="utf-8")
+    print(f"  [updated] {filepath}")
+    return "updated"
+
+  return "skipped"
+
+def main():
+  root = Path(__file__).parent.parent
+  files = []
+  for dir_name in DIRS_TO_SCAN:
+    scan_dir = root / dir_name
+    if scan_dir.exists():
+      files.extend(
+        file_path
+        for file_path in scan_dir.rglob("*.java")
+        if not any(part in SKIP_DIRS for part in file_path.parts)
+      )
+
+  stats = {"added": 0, "updated": 0, "skipped": 0}
+  print("Formatting Java files and managing license headers...\\n")
+  print(f"Found {len(files)} file(s)\\n")
+  for file_path in files:
+    stats[process_file(file_path)] += 1
+  print(
+    f"\\nDone — added: {stats['added']}, updated: {stats['updated']}, skipped: {stats['skipped']}"
+  )
+
+if __name__ == "__main__":
+  main()
+''')
+    return script.substitute(author=author, license_header=license_header)
+
+def generate_start_test_server_py(server_name):
+    return f'''#!/usr/bin/env python3
+"""Start the scaffolded Minecraft test server."""
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+def start_server(server_dir):
+    if sys.platform.startswith("win"):
+        command = ["cmd", "/c", "start.bat"]
+    else:
+        command = ["./start.sh"]
+    subprocess.run(command, cwd=server_dir, check=True)
+
+def main():
+    parser = argparse.ArgumentParser(description="Start the scaffolded Minecraft test server")
+    parser.add_argument(
+        "--server-name",
+        default="{server_name}",
+        help="Name of the scaffolded test server directory",
+    )
+    parser.add_argument(
+        "--server-dir",
+        default=None,
+        help="Explicit path to the server directory",
+    )
+    args = parser.parse_args()
+
+    root = Path(__file__).resolve().parent.parent
+    server_dir = Path(args.server_dir) if args.server_dir else root / "servers" / args.server_name
+
+    if not server_dir.exists():
+        raise SystemExit(f"Server directory not found: {{server_dir}}")
+
+    start_server(server_dir)
 
 if __name__ == "__main__":
     main()
@@ -463,7 +611,48 @@ function prompt() {{
 prompt();
 """
 
-def generate_makefile(project_name, entry, test_framework, linter):
+def generate_makefile(
+    project_name,
+    entry,
+    test_framework,
+    linter,
+    lang="python",
+    minecraft_server=False,
+    minecraft_server_name=None,
+):
+    if lang == "java":
+        test_server_target = ""
+        if minecraft_server:
+            server_name = minecraft_server_name or f"TestServer_{project_name}"
+            test_server_target = f"""
+test-server-start:
+	python scripts/start_test_server.py --server-name {server_name}
+"""
+        return f""".PHONY: test coverage package format format-lic pre-commit clean{' test-server-start' if minecraft_server else ''}
+
+test:
+	mvn test
+
+coverage:
+	mvn test jacoco:report
+
+package:
+	mvn package
+
+format:
+	mvn com.diffplug.spotless:spotless-maven-plugin:2.43.0:apply
+
+format-lic:
+	python scripts/format_with_licenses.py
+
+pre-commit:
+	mvn com.diffplug.spotless:spotless-maven-plugin:2.43.0:apply
+	python scripts/format_with_licenses.py
+	mvn test jacoco:report
+
+clean:
+	mvn clean
+{test_server_target}"""
     test_cmd = (
         "python -m pytest"
         if test_framework == "pytest"

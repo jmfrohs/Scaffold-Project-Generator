@@ -23,6 +23,7 @@
 import os
 import sys
 from argparse import Namespace
+from pathlib import Path
 
 import pytest
 
@@ -113,6 +114,58 @@ class TestScaffoldProject:
         assert (base / "src" / "css" / "styles.css").exists()
         assert (base / "src" / "js" / "index.js").exists()
         assert (base / "package.json").exists()
+
+    def test_java_project_structure(self, tmp_path):
+        scaffold_project(_make_args(tmp_path, lang="java", test_framework=None))
+        base = tmp_path / "TestProj"
+        java_files = list(base.glob("src/main/java/**/*.java"))
+        java_test_files = list(base.glob("src/test/java/**/*.java"))
+        assert (base / "pom.xml").exists()
+        assert (base / "Makefile").exists()
+        assert (base / "scripts" / "format_with_licenses.py").exists()
+        assert (base / "scripts" / "start_test_server.py").exists() is False
+        assert (base / "src" / "main" / "resources" / "plugin.yml").exists()
+        assert len(java_files) == 1
+        assert len(java_test_files) == 1
+
+    def test_java_project_with_minecraft_server_structure(self, tmp_path):
+        scaffold_project(
+            _make_args(
+                tmp_path,
+                lang="java",
+                test_framework=None,
+                minecraft_server=True,
+                minecraft_server_version="1.21.4",
+            )
+        )
+        base = tmp_path / "TestProj"
+        assert (base / "scripts" / "start_test_server.py").exists()
+        makefile = (base / "Makefile").read_text(encoding="utf-8")
+        assert "test-server-start" in makefile
+        assert "jacoco:report" in makefile
+
+    def test_java_project_uses_repo_root_servers_dir(self, tmp_path, monkeypatch):
+        captured = {}
+
+        def fake_create_scaffold_test_server(*args, **kwargs):
+            captured.update(kwargs)
+
+        monkeypatch.setattr(
+            "scaffolder.create_scaffold_test_server", fake_create_scaffold_test_server
+        )
+
+        scaffold_project(
+            _make_args(
+                tmp_path,
+                lang="java",
+                test_framework=None,
+                minecraft_server=True,
+                minecraft_server_version="1.21.4",
+            )
+        )
+
+        expected_servers_dir = Path(__file__).resolve().parent.parent / "servers"
+        assert Path(captured["servers_dir"]) == expected_servers_dir
 
     def test_license_content(self, tmp_path):
         scaffold_project(_make_args(tmp_path))

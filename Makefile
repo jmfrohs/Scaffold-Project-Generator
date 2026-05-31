@@ -10,8 +10,9 @@ test:
 	python -m pytest tests/ --no-cov
 
 coverage:
-	python -m pytest tests/ --cov src --cov-report term --cov-report html
-	python -c "import os; os.path.exists('.coverage') and os.remove('.coverage')"
+	python -m pytest tests/ --cov src --cov-report term --cov-report html --cov-report json
+	python scripts/coverage_to_json.py
+	python -c "import os; os.path.exists('.coverage') and os.remove('.coverage'); os.path.exists('coverage.json') and os.remove('coverage.json')"
 
 format:
 	python -m black src/ tests/

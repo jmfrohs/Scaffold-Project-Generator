@@ -54,6 +54,10 @@ def get_version(default="0.1.0"):
     print(f"\n  Version set to: {version}")
     return version
 
+def try_get_user_country():
+    country = "de"
+    return country
+
 def try_get_git_user():
     """Try to get default author from git config or environment variable."""
     author = os.getenv("SCAFFOLD_DEFAULT_AUTHOR")

@@ -11,12 +11,12 @@ ROOT = Path(__file__).parent.parent
 
 COMMANDS = [
     ("1", "install       → pip install -r requirements.txt", "pip install -r requirements.txt"),
-    ("2", "run           → python src/scaffold", "python src/scaffold"),
+    ("2", "run           → python src/main.py", "python src/main.py"),
     ("3", "test          → pytest", "pytest"),
     ("4", "coverage      → pytest --cov=src --cov-report=term", "pytest --cov=src --cov-report=term"),
-    ("5", "format        → black src/ tests/", "black src/ tests/"),
-    ("6", "format:lic    → python scripts/format_with_licenses.py", "python scripts/format_with_licenses.py"),
-
+    ("5", "coverage-html → pytest --cov=src --cov-report=html", "pytest --cov=src --cov-report=html"),
+    ("6", "format        → black src/ tests/", "black src/ tests/"),
+    ("7", "format:lic    → python scripts/format_with_licenses.py", "python scripts/format_with_licenses.py"),
     ("8", "pre-commit    → format + format:lic", "black src/ tests/ && python scripts/format_with_licenses.py"),
     ("0", "exit", None),
 ]

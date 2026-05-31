@@ -39,7 +39,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lang",
         default=defaults["lang"],
-        help=f"Language: python|javascript|html (default: {defaults['lang']})",
+        help=f"Language: python|javascript|html|java (default: {defaults['lang']})",
     )
     parser.add_argument(
         "--template",
@@ -116,6 +116,25 @@ if __name__ == "__main__":
         help="Port for the server (default: 3001)",
     )
     parser.add_argument(
+        "--minecraft-server",
+        action="store_true",
+        dest="minecraft_server",
+        default=False,
+        help="Add a local Minecraft Server for Plugin Testing (Java only)",
+    )
+    parser.add_argument(
+        "--minecraft-version",
+        dest="minecraft_version",
+        default=None,
+        help="Minecraft version for --minecraft-server (default: latest, interactive with questionary if installed)",
+    )
+    parser.add_argument(
+        "--minecraft-server-name",
+        dest="minecraft_server_name",
+        default=None,
+        help="Custom server name for --minecraft-server (default: TestServer_{project_name})",
+    )
+    parser.add_argument(
         "--output-dir",
         dest="output_dir",
         default=defaults.get("output_dir", DEFAULT_OUTPUT_DIR),
@@ -190,6 +209,12 @@ if __name__ == "__main__":
         default=False,
         help="Edit selected project configuration before creating",
     )
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        default=False,
+        help="Include htmlcov folder with coverage report in the new project",
+    )
     parser.set_defaults(git=defaults["git"], install=defaults["install"])
 
     if len(sys.argv) == 1:
@@ -202,7 +227,7 @@ if __name__ == "__main__":
         recent_projects = get_recent_projects(args.history_limit)
         selected = browse_history(recent_projects)
         if selected is None:
-            print("❌ Cancelled.")
+            print("Cancelled.")
             sys.exit(1)
 
         args.name = selected["name"]
@@ -220,6 +245,9 @@ if __name__ == "__main__":
         args.ci = selected.get("ci", "github")
         args.server = selected.get("server", False)
         args.server_port = selected.get("server_port", 3001)
+        args.minecraft_server = selected.get("minecraft-server", False)
+        args.minecraft_server_version = selected.get("minecraft-version")
+        args.minecraft_server_name = selected.get("minecraft-server-name")
         args.prettier = selected.get("prettier", False)
         args.indent_size = selected.get("indent_size", 2)
 
@@ -231,6 +259,9 @@ if __name__ == "__main__":
                 "template": args.template,
                 "version": args.version,
                 "description": args.description,
+                "minecraft-server": args.minecraft_server,
+                "minecraft-server-version": args.minecraft_server_version,
+                "minecraft-server-name": args.minecraft_server_name,
             }
             edited = edit_project_config(config_dict)
             args.name = edited["name"]
@@ -238,6 +269,9 @@ if __name__ == "__main__":
             args.template = edited["template"]
             args.version = edited["version"]
             args.description = edited["description"]
+            args.minecraft_server = edited["minecraft-server"]
+            args.minecraft_version = edited["minecraft-version"]
+            args.minecraft_server_name = edited["minecraft-server-name"]
 
     if not args.name:
         parser.print_help()
@@ -249,4 +283,4 @@ if __name__ == "__main__":
     if args.browse:
         args.output_dir = "browse"
 
-    scaffold_project(args)
+    scaffold_project(args, copy_htmlcov=args.coverage)
